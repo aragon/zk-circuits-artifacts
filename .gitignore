@@ -3,6 +3,7 @@ package-lock.json
 build
 release
 circuit_js
+circuit_cpp
 powersoftau
 *.r1cs
 *.sym

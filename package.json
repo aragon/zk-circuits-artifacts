@@ -4,12 +4,11 @@
   "description": "",
   "main": "",
   "scripts": {
-    "postinstall": "cd node_modules/voccircuits/ && npm install",
+    "postinstall": "cd node_modules && git clone https://github.com/aragon/zkmultisig.git && rm -rf .git && cd zkmultisig/circuits && npm install",
     "test": "echo \"undefined\""
   },
   "license": "GPL-3.0",
   "dependencies": {
-    "snarkjs": "0.4.10",
-    "voccircuits": "github:vocdoni/zk-franchise-proof-circuit"
+    "snarkjs": "0.4.10"
   }
 }

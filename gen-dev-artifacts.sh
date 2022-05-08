@@ -2,17 +2,21 @@
 
 # Script to generate the dev-enviorment circuit-artifacts files (compile & trusted setup)
 
+date
+npm install
+date
+
 SNARKJS=./node_modules/.bin/snarkjs 
 CIRCOM=circom 
 BUILD=build
 POWERSOFTAU=powersoftau
-DEVINFOFILE=zkcensusproof/dev/circuits-info.md
+DEVINFOFILE=zkmultisig/dev/circuits-info.md
 
 powers_of_tau() {
 	echo "computing powers_of_tau"
 	mkdir $POWERSOFTAU
 	itime="$(date -u +%s)"
-	$SNARKJS powersoftau new bn128 15 $POWERSOFTAU/pot_0000.ptau -v
+	$SNARKJS powersoftau new bn128 21 $POWERSOFTAU/pot_0000.ptau -v
 	$SNARKJS powersoftau contribute $POWERSOFTAU/pot_0000.ptau $POWERSOFTAU/pot_0001.ptau --name=contribution -v -e=random
 	$SNARKJS powersoftau beacon $POWERSOFTAU/pot_0001.ptau $POWERSOFTAU/pot_beacon.ptau 0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f 10 -n=Final
 	$SNARKJS powersoftau prepare phase2 $POWERSOFTAU/pot_beacon.ptau $POWERSOFTAU/pot_final.ptau -v
@@ -23,10 +27,8 @@ powers_of_tau() {
 
 compile_and_ts() {
 	CIRCUITCODE="pragma circom 2.0.0;
-
-include \"../../../node_modules/voccircuits/circuits/census.circom\";
-
-component main {public [processId, censusRoot, nullifier, voteHash]}= Census($NLEVELS);"
+	include \"../../../node_modules/zkmultisig/circuits/src/zkmultisig.circom\";
+	component main {public [chainID, processID, censusRoot, receiptsRoot, nVotes, result, withReceipts]} = zkmultisig($NMAXVOTES, $NLEVELS);"
 
 	mkdir -p $CIRCUITPATH/$BUILD
 	echo "$CIRCUITCODE" > $CIRCUITPATH/circuit.circom
@@ -59,6 +61,7 @@ component main {public [processId, censusRoot, nullifier, voteHash]}= Census($NL
 	echo "trusted setup done in ($(($(date -u +%s)-$itime))s)"
 
 	# store circuit info
+	echo "\n\n" >> $DEVINFOFILE
 	echo "## Circuit $CIRCUITPATH leafs ($NLEVELS levels)\n" >> $DEVINFOFILE
 	$SNARKJS r1cs info $CIRCUITPATH/$BUILD/circuit.r1cs >> $DEVINFOFILE
 }
@@ -72,40 +75,53 @@ compute_hashes() {
 	echo "\`\`\`" >> $DEVINFOFILE
 }
 
+date
 if [ -d "$POWERSOFTAU" ]; then
 	echo "powers of tau already exist, avoid computing it"
 else
 	echo "powers of tau does not exist, compute it"
 	powers_of_tau
 fi
+date
 
 echo "# dev env circuits artifacts" > $DEVINFOFILE
 
-NLEVELS=3
+NLEVELS=4
+NMAXVOTES=16
 NAME=$(echo "2 ^ $NLEVELS" | bc)
-CIRCUITPATH=zkcensusproof/dev/$NAME
+CIRCUITPATH=zkmultisig/dev/$NAME
 echo "compile_and_ts() of $CIRCUITPATH"
 compile_and_ts
 compute_hashes
 
-NLEVELS=4
+date
+
+NLEVELS=7
+NMAXVOTES=128
 NAME=$(echo "2 ^ $NLEVELS" | bc)
-CIRCUITPATH=zkcensusproof/dev/$NAME
+CIRCUITPATH=zkmultisig/dev/$NAME
 echo "compile_and_ts() of $CIRCUITPATH"
 compile_and_ts
 compute_hashes
+
+date
 
 NLEVELS=10
+NMAXVOTES=1024
 NAME=$(echo "2 ^ $NLEVELS" | bc)
-CIRCUITPATH=zkcensusproof/dev/$NAME
+CIRCUITPATH=zkmultisig/dev/$NAME
 echo "compile_and_ts() of $CIRCUITPATH"
 compile_and_ts
 compute_hashes
+
+date
 
 NLEVELS=16
+NMAXVOTES=65536
 NAME=$(echo "2 ^ $NLEVELS" | bc)
-CIRCUITPATH=zkcensusproof/dev/$NAME
+CIRCUITPATH=zkmultisig/dev/$NAME
 echo "compile_and_ts() of $CIRCUITPATH"
 compile_and_ts
 compute_hashes
 
+date
