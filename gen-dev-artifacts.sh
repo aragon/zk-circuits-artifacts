@@ -7,10 +7,9 @@ npm install
 date
 
 SNARKJS=./node_modules/.bin/snarkjs 
-CIRCOM=circom 
 BUILD=build
 POWERSOFTAU=powersoftau
-DEVINFOFILE=zkmultisig/dev/circuits-info.md
+DEVINFOFILE=ovote/dev/circuits-info.md
 
 powers_of_tau() {
 	echo "computing powers_of_tau"
@@ -27,8 +26,8 @@ powers_of_tau() {
 
 compile_and_ts() {
 	CIRCUITCODE="pragma circom 2.0.0;
-	include \"../../../node_modules/zkmultisig/circuits/src/zkmultisig.circom\";
-	component main {public [chainID, processID, censusRoot, receiptsRoot, nVotes, result, withReceipts]} = zkmultisig($NMAXVOTES, $NLEVELS);"
+	include \"../../../node_modules/ovote/circuits/src/ovote.circom\";
+	component main {public [chainID, processID, censusRoot, receiptsRoot, nVotes, result, withReceipts]} = ovote($NMAXVOTES, $NLEVELS);"
 
 	mkdir -p $CIRCUITPATH/$BUILD
 	echo "$CIRCUITCODE" > $CIRCUITPATH/circuit.circom
@@ -40,9 +39,10 @@ compile_and_ts() {
 	# compile circuit
 	echo "compiling the circuit"
 	itime="$(date -u +%s)"
-	circom $CIRCUITPATH/circuit.circom --r1cs --wasm --sym
+	circom $CIRCUITPATH/circuit.circom --c --r1cs --wasm --sym
 	mv circuit.* $CIRCUITPATH/$BUILD/
 	mv circuit_js $CIRCUITPATH/
+	mv circuit_cpp $CIRCUITPATH/
 
 	ftime="$(date -u +%s)"
 	echo "circuit compiled in ($(($(date -u +%s)-$itime))s)"
@@ -60,6 +60,9 @@ compile_and_ts() {
 	ftime="$(date -u +%s)"
 	echo "trusted setup done in ($(($(date -u +%s)-$itime))s)"
 
+	echo "generate solidityverifier"
+	$SNARKJS zkey export solidityverifier $CIRCUITPATH/circuit.zkey $CIRCUITPATH/verifier.sol
+
 	# store circuit info
 	echo "\n\n" >> $DEVINFOFILE
 	echo "## Circuit $CIRCUITPATH leafs ($NLEVELS levels)\n" >> $DEVINFOFILE
@@ -72,6 +75,7 @@ compute_hashes() {
 	sha256sum $CIRCUITPATH/circuit.zkey >> $DEVINFOFILE
 	sha256sum $CIRCUITPATH/circuit.wasm >> $DEVINFOFILE
 	sha256sum $CIRCUITPATH/verification_key.json >> $DEVINFOFILE
+	sha256sum $CIRCUITPATH/verifier.sol >> $DEVINFOFILE
 	echo "\`\`\`" >> $DEVINFOFILE
 }
 
@@ -89,7 +93,7 @@ echo "# dev env circuits artifacts" > $DEVINFOFILE
 NLEVELS=4
 NMAXVOTES=16
 NAME=$(echo "2 ^ $NLEVELS" | bc)
-CIRCUITPATH=zkmultisig/dev/$NAME
+CIRCUITPATH=ovote/dev/$NAME
 echo "compile_and_ts() of $CIRCUITPATH"
 compile_and_ts
 compute_hashes
@@ -99,7 +103,7 @@ date
 NLEVELS=7
 NMAXVOTES=128
 NAME=$(echo "2 ^ $NLEVELS" | bc)
-CIRCUITPATH=zkmultisig/dev/$NAME
+CIRCUITPATH=ovote/dev/$NAME
 echo "compile_and_ts() of $CIRCUITPATH"
 compile_and_ts
 compute_hashes
@@ -109,7 +113,7 @@ date
 NLEVELS=10
 NMAXVOTES=1024
 NAME=$(echo "2 ^ $NLEVELS" | bc)
-CIRCUITPATH=zkmultisig/dev/$NAME
+CIRCUITPATH=ovote/dev/$NAME
 echo "compile_and_ts() of $CIRCUITPATH"
 compile_and_ts
 compute_hashes
@@ -119,7 +123,7 @@ date
 NLEVELS=16
 NMAXVOTES=65536
 NAME=$(echo "2 ^ $NLEVELS" | bc)
-CIRCUITPATH=zkmultisig/dev/$NAME
+CIRCUITPATH=ovote/dev/$NAME
 echo "compile_and_ts() of $CIRCUITPATH"
 compile_and_ts
 compute_hashes
